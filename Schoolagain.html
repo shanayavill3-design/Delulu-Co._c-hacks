@@ -1,0 +1,1305 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>School Again?</title>
+
+<style>
+:root {
+  --void: #0b1417;
+  --paper: #f1ead8;
+  --ink: #1f2a33;
+  --brass: #e0b04a;
+  --alarm: #c0392b;
+  --ok: #2f7d4f;
+  --glow: #fff3b0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--void);
+  color: var(--glow);
+  font-family: system-ui, Arial, sans-serif;
+  touch-action: none;
+  user-select: none;
+}
+
+canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#hud {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  pointer-events: none;
+  text-shadow: 0 2px 5px #000;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+#toast {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  top: 60px;
+  text-align: center;
+  pointer-events: none;
+  text-shadow: 0 2px 5px #000;
+  font-size: 14px;
+  min-height: 20px;
+}
+
+#mute {
+  position: fixed;
+  z-index: 20;
+  right: 12px;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid #fff6;
+  background: #0009;
+  color: var(--glow);
+  font-size: 19px;
+}
+
+.screen {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: #05090bc9;
+  z-index: 10;
+  overflow: auto;
+}
+
+.screen.show {
+  display: flex;
+}
+
+.paper {
+  background: var(--paper);
+  color: var(--ink);
+  max-width: 440px;
+  width: 100%;
+  padding: 22px 20px 16px;
+  border-radius: 3px;
+  box-shadow: 0 12px 40px #000;
+  transform: rotate(-.5deg);
+  font-family: Georgia, 'Courier New', serif;
+  border: 1px solid #d3c7ad;
+}
+
+.paper h1, .paper h2 {
+  margin: 0 0 12px;
+  font-weight: 500;
+}
+
+.paper h1 {
+  font-size: clamp(28px, 7vw, 40px);
+}
+
+.paper h2 {
+  font-size: 26px;
+}
+
+.paper p {
+  margin: 0 0 14px;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.hint {
+  font-size: 14px !important;
+  opacity: .78;
+}
+
+.opt {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  padding: 12px 13px;
+  font: inherit;
+  font-size: 17px;
+  text-align: left;
+  color: var(--ink);
+  background: transparent;
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.opt:active {
+  background: #ded4bf;
+}
+
+.opt.right {
+  background: #cfe8d5;
+  border-color: var(--ok);
+}
+
+.opt.wrong {
+  background: #f0cfc9;
+  border-color: var(--alarm);
+}
+
+#dpad {
+  position: fixed;
+  left: 14px;
+  bottom: 18px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: 48px 48px 48px;
+  grid-template-rows: 48px 48px 48px;
+  gap: 3px;
+  opacity: .72;
+}
+
+#dpad button {
+  border: 1px solid #fff8;
+  background: #1119;
+  color: #fff;
+  font-size: 22px;
+  border-radius: 10px;
+  touch-action: none;
+}
+
+#dpad .up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#dpad .left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+#dpad .down {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+#dpad .right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+#help {
+  position: fixed;
+  right: 12px;
+  bottom: 18px;
+  font-size: 12px;
+  opacity: .7;
+  text-align: right;
+  text-shadow: 0 2px 4px #000;
+  max-width: 45%;
+}
+
+#bar {
+  width: 120px;
+  height: 8px;
+  border: 1px solid #fff8;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0008;
+}
+
+#barfill {
+  height: 100%;
+  width: 100%;
+  background: #c0392b;
+}
+
+@media (min-width: 760px) {
+  #dpad {
+    opacity: .45;
+  }
+
+  #help {
+    font-size: 13px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game" aria-label="School Again horror game"></canvas>
+
+<div id="hud">
+  <span>🗝 <b id="keys">0</b>/10</span>
+  <span>♥ <b id="lives">3</b></span>
+  <span id="bar"><span id="barfill"></span></span>
+</div>
+
+<div id="toast">Find the glowing keys. Avoid your teacher.</div>
+
+<button id="mute" aria-label="Toggle sound">🔇</button>
+
+<div id="dpad" aria-label="Movement controls">
+  <button class="up" data-dir="up" aria-label="Move up">▲</button>
+  <button class="left" data-dir="left" aria-label="Move left">◀</button>
+  <button class="down" data-dir="down" aria-label="Move down">▼</button>
+  <button class="right" data-dir="right" aria-label="Move right">▶</button>
+</div>
+
+<div id="help">
+  Move: WASD / arrow keys / buttons<br>
+  Drag anywhere to move
+</div>
+
+<div class="screen show" id="intro">
+  <div class="paper">
+    <h1>School Again?</h1>
+
+    <p>
+      You wake up on the floor of your old school.
+      It’s night, and the halls are silent.
+      A small ball of light drifts toward you.
+    </p>
+
+    <p>
+      <b>Find 10 keys.</b> Answer the questions on the papers,
+      then reach the glowing EAST EXIT.
+      Three teachers are roaming the halls.
+      If they catch you, you lose a life.
+    </p>
+
+    <p class="hint">
+      Move with WASD, arrow keys, the on-screen buttons,
+      or drag on the screen. Works on mobile and desktop.
+    </p>
+
+    <button class="opt" id="go">START GAME →</button>
+  </div>
+</div>
+
+<div class="screen" id="quiz">
+  <div class="paper">
+    <h2 id="q">Question</h2>
+    <p class="hint">Answer correctly to collect the key.</p>
+    <div id="opts"></div>
+    <p id="feedback" aria-live="polite"></p>
+  </div>
+</div>
+
+<div class="screen" id="end">
+  <div class="paper">
+    <h1 id="endTitle">You escaped.</h1>
+    <p id="endText"></p>
+    <button class="opt" id="again">PLAY AGAIN ↻</button>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const keysEl = document.getElementById('keys');
+const livesEl = document.getElementById('lives');
+const toast = document.getElementById('toast');
+const barfill = document.getElementById('barfill');
+
+const intro = document.getElementById('intro');
+const quiz = document.getElementById('quiz');
+const end = document.getElementById('end');
+
+const qEl = document.getElementById('q');
+const optsEl = document.getElementById('opts');
+const feedback = document.getElementById('feedback');
+
+let W = innerWidth;
+let H = innerHeight;
+let dpr = 1;
+let last = 0;
+let started = false;
+let paused = true;
+let won = false;
+let muted = true;
+let audioCtx = null;
+let ambientOsc = null;
+
+const WORLD = {
+  w: 1800,
+  h: 1200,
+  wall: 28
+};
+
+// PLAYER SPEED: lower number means slower movement.
+const player = {
+  x: 120,
+  y: 120,
+  r: 13,
+  speed: 125,
+  inv: 0
+};
+
+// Main chasing teacher.
+const teacher = {
+  x: 1580,
+  y: 1020,
+  r: 18,
+  speed: 72,
+  alert: 0
+};
+
+// Two additional teachers.
+const extraTeachers = [
+  {x: 430, y: 430, r: 16, speed: 54, phase: 0.4},
+  {x: 1360, y: 800, r: 17, speed: 62, phase: 2.1}
+];
+
+let keyItems = [];
+let collected = 0;
+let lives = 3;
+let questionIndex = 0;
+let activeKey = null;
+let keysDown = {};
+let touchDirs = {};
+let drag = null;
+let toastTimer = 0;
+
+const questions = [
+  ['What is 7 × 8?', ['54', '56', '64', '48'], 1],
+  ['Which planet is known as the Red Planet?', ['Venus', 'Jupiter', 'Mars', 'Mercury'], 2],
+  ['What is the largest ocean on Earth?', ['Atlantic', 'Indian', 'Arctic', 'Pacific'], 3],
+  ['How many sides does a hexagon have?', ['5', '6', '7', '8'], 1],
+  ['Which gas do plants absorb?', ['Oxygen', 'Nitrogen', 'Carbon dioxide', 'Hydrogen'], 2],
+  ['What is 144 ÷ 12?', ['10', '11', '12', '14'], 2],
+  ['Which is a mammal?', ['Shark', 'Frog', 'Dolphin', 'Trout'], 2],
+  ['What is the opposite of “ancient”?', ['Old', 'Modern', 'Historic', 'Past'], 1],
+  ['How many minutes are in 2 hours?', ['100', '110', '120', '140'], 2],
+  ['Which organ pumps blood around the body?', ['Lungs', 'Brain', 'Stomach', 'Heart'], 3],
+  ['Bonus: What is 9 + 6?', ['13', '14', '15', '16'], 2],
+  ['Bonus: Which is a primary colour of light?', ['Green', 'Brown', 'Pink', 'Black'], 0]
+];
+
+const walls = [
+  {x: 300, y: 0, w: 30, h: 350},
+  {x: 300, y: 470, w: 30, h: 330},
+  {x: 600, y: 200, w: 30, h: 400},
+  {x: 600, y: 520, w: 300, h: 30},
+  {x: 900, y: 0, w: 30, h: 300},
+  {x: 900, y: 370, w: 30, h: 350},
+  {x: 1200, y: 300, w: 30, h: 400},
+  {x: 1200, y: 780, w: 300, h: 30},
+  {x: 150, y: 620, w: 300, h: 30},
+  {x: 450, y: 820, w: 30, h: 250},
+  {x: 750, y: 900, w: 30, h: 300},
+  {x: 1000, y: 980, w: 200, h: 30}
+];
+
+const exit = {
+  x: 1710,
+  y: 90,
+  w: 55,
+  h: 80
+};
+
+function resize() {
+  W = innerWidth;
+  H = innerHeight;
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(W * dpr);
+  canvas.height = Math.floor(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+addEventListener('resize', resize);
+resize();
+
+function reset() {
+  player.x = 120;
+  player.y = 120;
+  player.inv = 0;
+
+  teacher.x = 1580;
+  teacher.y = 1020;
+  teacher.alert = 0;
+
+  extraTeachers[0].x = 430;
+  extraTeachers[0].y = 430;
+  extraTeachers[1].x = 1360;
+  extraTeachers[1].y = 800;
+
+  collected = 0;
+  lives = 3;
+  questionIndex = 0;
+  won = false;
+  started = false;
+  paused = true;
+  activeKey = null;
+  keysDown = {};
+  touchDirs = {};
+
+  keyItems = [];
+
+  const spots = [
+    [200, 260], [470, 120], [490, 700],
+    [780, 340], [1050, 160], [1080, 620],
+    [1420, 180], [1510, 650], [1400, 1050],
+    [350, 1020], [780, 720], [1650, 450]
+  ];
+
+  spots.forEach((p, i) => {
+    keyItems.push({
+      x: p[0],
+      y: p[1],
+      got: false,
+      qi: i
+    });
+  });
+
+  keysEl.textContent = '0';
+  livesEl.textContent = '3';
+  barfill.style.width = '100%';
+  toast.textContent = 'Find the glowing keys. Avoid your teacher.';
+
+  end.classList.remove('show');
+  quiz.classList.remove('show');
+  intro.classList.add('show');
+}
+
+function showToast(t) {
+  toast.textContent = t;
+  toastTimer = 2.8;
+}
+
+function start() {
+  intro.classList.remove('show');
+  started = true;
+  paused = false;
+  last = performance.now();
+
+  if (!muted) startAudio();
+}
+
+document.getElementById('go').addEventListener('click', start);
+document.getElementById('again').addEventListener('click', reset);
+
+function rectCircleHit(x, y, r, rect) {
+  const cx = Math.max(rect.x, Math.min(x, rect.x + rect.w));
+  const cy = Math.max(rect.y, Math.min(y, rect.y + rect.h));
+
+  return (x - cx) ** 2 + (y - cy) ** 2 < r * r;
+}
+
+function blocked(x, y, r) {
+  if (
+    x < r + WORLD.wall ||
+    y < r + WORLD.wall ||
+    x > WORLD.w - r - WORLD.wall ||
+    y > WORLD.h - r - WORLD.wall
+  ) {
+    return true;
+  }
+
+  return walls.some(w => rectCircleHit(x, y, r, w));
+}
+
+function movePlayer(dx, dy, dt) {
+  const len = Math.hypot(dx, dy);
+
+  if (len > 1) {
+    dx /= len;
+    dy /= len;
+  }
+
+  const nx = player.x + dx * player.speed * dt;
+  const ny = player.y + dy * player.speed * dt;
+
+  if (!blocked(nx, player.y, player.r)) {
+    player.x = nx;
+  }
+
+  if (!blocked(player.x, ny, player.r)) {
+    player.y = ny;
+  }
+}
+
+function openQuiz(item) {
+  if (paused || item.got) return;
+
+  activeKey = item;
+  paused = true;
+  quiz.classList.add('show');
+
+  const q = questions[item.qi % questions.length];
+
+  qEl.textContent = 'Paper ' + (collected + 1) + ': ' + q[0];
+  optsEl.innerHTML = '';
+  feedback.textContent = '';
+
+  q[1].forEach((answer, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.textContent = String.fromCharCode(65 + i) + '. ' + answer;
+
+    b.addEventListener('click', () => {
+      answerQuestion(i, q[2], b);
+    });
+
+    optsEl.appendChild(b);
+  });
+}
+
+function answerQuestion(choice, correct, button) {
+  if (!activeKey) return;
+
+  const buttons = [...optsEl.querySelectorAll('button')];
+  buttons.forEach(b => b.disabled = true);
+
+  if (choice === correct) {
+    button.classList.add('right');
+    activeKey.got = true;
+    collected++;
+    keysEl.textContent = collected;
+    feedback.textContent = 'Correct. The key is yours.';
+    feedback.style.color = '#2f7d4f';
+
+    showToast('A key clicks into place… ' + collected + '/10');
+  } else {
+    button.classList.add('wrong');
+    buttons[correct].classList.add('right');
+
+    lives--;
+    livesEl.textContent = lives;
+    feedback.textContent = 'Wrong answer. The halls heard that.';
+    feedback.style.color = '#a62f27';
+    teacher.alert = 5;
+  }
+
+  const wasWrong = choice !== correct;
+
+  setTimeout(() => {
+    quiz.classList.remove('show');
+    activeKey = null;
+
+    if (lives <= 0) {
+      finish(false);
+      return;
+    }
+
+    paused = false;
+
+    if (collected >= 10) {
+      showToast('You have all 10 keys. Find the EAST EXIT!');
+    } else if (wasWrong) {
+      showToast('Run. Something is coming.');
+    }
+  }, 900);
+}
+
+function finish(win) {
+  paused = true;
+  won = win;
+  end.classList.add('show');
+
+  document.getElementById('endTitle').textContent =
+    win ? 'YOU GOT OUT.' : 'DETENTION FOREVER.';
+
+  document.getElementById('endText').textContent =
+    win
+      ? 'The east door opens. Cold night air spills in. Behind you, the school bell rings once. You do not look back.'
+      : 'Your teacher found you in the dark. The school day starts again…';
+}
+
+function update(dt) {
+  if (!started || paused) return;
+
+  player.inv = Math.max(0, player.inv - dt);
+  teacher.alert = Math.max(0, teacher.alert - dt);
+
+  let dx = 0;
+  let dy = 0;
+
+  if (keysDown.ArrowLeft || keysDown.a || touchDirs.left) dx--;
+  if (keysDown.ArrowRight || keysDown.d || touchDirs.right) dx++;
+  if (keysDown.ArrowUp || keysDown.w || touchDirs.up) dy--;
+  if (keysDown.ArrowDown || keysDown.s || touchDirs.down) dy++;
+
+  if (drag) {
+    dx += drag.dx;
+    dy += drag.dy;
+  }
+
+  movePlayer(dx, dy, dt);
+
+  // Main teacher chases the player.
+  const tx = player.x - teacher.x;
+  const ty = player.y - teacher.y;
+  const dist = Math.hypot(tx, ty) || 1;
+
+  const ts = teacher.speed + (teacher.alert > 0 ? 58 : 0);
+
+  if (dist > 26) {
+    const mx = tx / dist * ts * dt;
+    const my = ty / dist * ts * dt;
+
+    const nx = teacher.x + mx;
+    const ny = teacher.y + my;
+
+    if (!blocked(nx, teacher.y, teacher.r)) {
+      teacher.x = nx;
+    }
+
+    if (!blocked(teacher.x, ny, teacher.r)) {
+      teacher.y = ny;
+    }
+  }
+
+  // Two extra teachers patrol the halls.
+  const allTeachers = [teacher, ...extraTeachers];
+
+  extraTeachers.forEach((t, i) => {
+    t.phase += dt * (i === 0 ? 0.8 : 0.65);
+
+    const targetX =
+      (i === 0 ? 440 : 1370) + Math.cos(t.phase) * 115;
+
+    const targetY =
+      (i === 0 ? 430 : 820) + Math.sin(t.phase * 0.8) * 100;
+
+    const vx = targetX - t.x;
+    const vy = targetY - t.y;
+    const vd = Math.hypot(vx, vy) || 1;
+
+    const nx = t.x + vx / vd * t.speed * dt;
+    const ny = t.y + vy / vd * t.speed * dt;
+
+    if (!blocked(nx, t.y, t.r)) t.x = nx;
+    if (!blocked(t.x, ny, t.r)) t.y = ny;
+  });
+
+  // Check whether any teacher catches the player.
+  for (const t of allTeachers) {
+    const near = Math.hypot(
+      player.x - t.x,
+      player.y - t.y
+    );
+
+    if (near < player.r + t.r + 2 && player.inv <= 0) {
+      lives--;
+      livesEl.textContent = lives;
+      player.inv = 2.1;
+
+      teacher.x = 1550;
+      teacher.y = 1050;
+
+      extraTeachers[0].x = 430;
+      extraTeachers[0].y = 430;
+
+      extraTeachers[1].x = 1360;
+      extraTeachers[1].y = 800;
+
+      showToast('A teacher caught you! Keep moving.');
+
+      if (lives <= 0) {
+        finish(false);
+        return;
+      }
+
+      break;
+    }
+  }
+
+  // Check for collectible keys.
+  for (const item of keyItems) {
+    if (
+      !item.got &&
+      Math.hypot(
+        player.x - item.x,
+        player.y - item.y
+      ) < 30
+    ) {
+      openQuiz(item);
+      break;
+    }
+  }
+
+  // Unlock the exit after collecting 10 keys.
+  if (
+    collected >= 10 &&
+    player.x > exit.x - 20 &&
+    player.x < exit.x + exit.w + 20 &&
+    player.y > exit.y - 20 &&
+    player.y < exit.y + exit.h + 20
+  ) {
+    finish(true);
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Camera follows the player.
+  const camX = Math.max(
+    0,
+    Math.min(WORLD.w - W, player.x - W / 2)
+  );
+
+  const camY = Math.max(
+    0,
+    Math.min(WORLD.h - H, player.y - H / 2)
+  );
+
+  ctx.save();
+  ctx.translate(-camX, -camY);
+
+  // School floor.
+  ctx.fillStyle = '#121b1f';
+  ctx.fillRect(0, 0, WORLD.w, WORLD.h);
+
+  // Floor tiles.
+  for (let y = 0; y < WORLD.h; y += 60) {
+    for (let x = 0; x < WORLD.w; x += 60) {
+      ctx.fillStyle =
+        ((x / 60 + y / 60) % 2 === 0)
+          ? '#242a2d'
+          : '#1b2226';
+
+      ctx.fillRect(x, y, 60, 60);
+
+      ctx.strokeStyle = '#0c1215';
+      ctx.strokeRect(x, y, 60, 60);
+    }
+  }
+
+  // Outer walls.
+  ctx.fillStyle = '#070c0f';
+
+  ctx.fillRect(0, 0, WORLD.w, WORLD.wall);
+  ctx.fillRect(0, 0, WORLD.wall, WORLD.h);
+
+  ctx.fillRect(
+    WORLD.w - WORLD.wall,
+    0,
+    WORLD.wall,
+    WORLD.h
+  );
+
+  ctx.fillRect(
+    0,
+    WORLD.h - WORLD.wall,
+    WORLD.w,
+    WORLD.wall
+  );
+
+  // Classroom doors and lockers.
+  for (let i = 0; i < 6; i++) {
+    const y = 100 + i * 175;
+
+    ctx.fillStyle = '#303a40';
+    ctx.fillRect(38, y, 34, 100);
+
+    ctx.fillStyle = '#11181c';
+    ctx.fillRect(44, y + 8, 22, 82);
+
+    ctx.fillStyle = '#4d565a';
+    ctx.fillRect(78, y + 15, 5, 3);
+  }
+
+  for (let i = 0; i < 7; i++) {
+    const x = 360 + i * 185;
+
+    ctx.fillStyle = '#26343c';
+    ctx.fillRect(x, 38, 105, 25);
+
+    for (let j = 0; j < 4; j++) {
+      ctx.strokeStyle = '#53616a';
+      ctx.beginPath();
+      ctx.moveTo(x + 8 + j * 24, 43);
+      ctx.lineTo(x + 8 + j * 24, 57);
+      ctx.stroke();
+    }
+  }
+
+  // Classroom decorations.
+  const rooms = [
+    {x: 95, y: 175},
+    {x: 365, y: 165},
+    {x: 665, y: 665},
+    {x: 965, y: 465},
+    {x: 1265, y: 465},
+    {x: 1360, y: 900}
+  ];
+
+  rooms.forEach((r, ri) => {
+    // Chalkboard.
+    ctx.fillStyle = '#493f32';
+    ctx.fillRect(r.x, r.y, 118, 8);
+
+    ctx.fillStyle = '#17443d';
+    ctx.fillRect(r.x + 4, r.y + 4, 110, 4);
+
+    ctx.fillStyle = '#c9d6b4';
+    ctx.font = '10px Georgia';
+    ctx.textAlign = 'left';
+
+    ctx.fillText(
+      ri % 2 === 0 ? '2 + 2 = ?' : 'READ CHAPTER 6',
+      r.x + 8,
+      r.y + 2
+    );
+
+    // Teacher's desk.
+    ctx.fillStyle = '#4b3426';
+    ctx.fillRect(r.x + 15, r.y + 35, 58, 28);
+
+    ctx.fillStyle = '#77533a';
+    ctx.fillRect(r.x + 12, r.y + 32, 64, 7);
+
+    // Books and papers on the desk.
+    ctx.fillStyle = '#1c2428';
+    ctx.fillRect(r.x + 22, r.y + 41, 14, 9);
+
+    ctx.fillStyle = '#d4c7a4';
+    ctx.fillRect(r.x + 42, r.y + 39, 16, 3);
+
+    // Student desks and chairs.
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 3; col++) {
+        const dx = r.x + 8 + col * 43;
+        const dy = r.y + 82 + row * 42;
+
+        // Desk.
+        ctx.fillStyle = '#533a29';
+        ctx.fillRect(dx, dy, 30, 19);
+
+        ctx.fillStyle = '#806047';
+        ctx.fillRect(dx - 2, dy - 3, 34, 6);
+
+        // Chair.
+        ctx.fillStyle = '#2d363b';
+        ctx.fillRect(dx + 8, dy + 20, 14, 11);
+
+        ctx.fillStyle = '#465159';
+        ctx.fillRect(dx + 10, dy + 22, 10, 7);
+
+        // Books on selected desks.
+        if ((row + col + ri) % 3 === 0) {
+          ctx.fillStyle = '#d8cba9';
+          ctx.fillRect(dx + 5, dy + 1, 12, 3);
+
+          ctx.fillStyle = '#9a3830';
+          ctx.fillRect(dx + 20, dy + 2, 4, 4);
+        }
+      }
+    }
+
+    // Classroom poster.
+    ctx.fillStyle = '#bba77f';
+    ctx.fillRect(r.x + 140, r.y + 4, 30, 42);
+
+    ctx.fillStyle = ri % 2 ? '#6c3f3b' : '#3c6b58';
+    ctx.fillRect(r.x + 144, r.y + 8, 22, 34);
+
+    ctx.fillStyle = '#eee0bd';
+    ctx.font = 'bold 8px system-ui';
+    ctx.textAlign = 'center';
+
+    ctx.fillText(
+      ri % 2 ? 'READ' : 'BE KIND',
+      r.x + 155,
+      r.y + 25
+    );
+
+    // Wall clock.
+    ctx.fillStyle = '#d7d0bd';
+    ctx.beginPath();
+    ctx.arc(r.x + 180, r.y + 15, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#242a2d';
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(r.x + 180, r.y + 15);
+    ctx.lineTo(r.x + 180, r.y + 8);
+
+    ctx.moveTo(r.x + 180, r.y + 15);
+    ctx.lineTo(r.x + 185, r.y + 18);
+
+    ctx.stroke();
+  });
+
+  // Draw walls.
+  walls.forEach(w => {
+    ctx.fillStyle = '#080d10';
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+
+    ctx.strokeStyle = '#39454a';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(w.x, w.y, w.w, w.h);
+  });
+
+  // Exit door.
+  ctx.fillStyle = collected >= 10 ? '#2f7d4f' : '#3b2524';
+
+  ctx.fillRect(
+    exit.x,
+    exit.y,
+    exit.w,
+    exit.h
+  );
+
+  ctx.strokeStyle = collected >= 10 ? '#9cffad' : '#8a5044';
+  ctx.lineWidth = 3;
+
+  ctx.strokeRect(
+    exit.x,
+    exit.y,
+    exit.w,
+    exit.h
+  );
+
+  ctx.fillStyle = collected >= 10 ? '#b8ffc4' : '#e7c46d';
+  ctx.font = 'bold 14px system-ui';
+  ctx.textAlign = 'center';
+
+  ctx.fillText('EAST', exit.x + exit.w / 2, exit.y - 8);
+
+  ctx.fillText(
+    collected >= 10 ? 'OPEN' : 'LOCKED',
+    exit.x + exit.w / 2,
+    exit.y + exit.h + 18
+  );
+
+  // Glowing collectible keys.
+  keyItems.forEach(k => {
+    if (k.got) return;
+
+    const pulse =
+      1 + Math.sin(performance.now() / 180 + k.x) * 0.18;
+
+    ctx.save();
+    ctx.translate(k.x, k.y);
+
+    ctx.shadowColor = '#ffd04f';
+    ctx.shadowBlur = 22;
+    ctx.fillStyle = '#ffcf4f';
+
+    ctx.beginPath();
+    ctx.arc(0, 0, 8 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#fff1a8';
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(13, 9);
+    ctx.lineTo(19, 3);
+    ctx.moveTo(10, 7);
+    ctx.lineTo(14, 13);
+    ctx.stroke();
+
+    ctx.restore();
+  });
+
+  // Draw all three teachers.
+  [teacher, ...extraTeachers].forEach((t, i) => {
+    ctx.save();
+    ctx.translate(t.x, t.y);
+
+    ctx.shadowColor =
+      (t.alert > 0 || i === 0) ? '#ff2015' : '#000';
+
+    ctx.shadowBlur =
+      (t.alert > 0 || i === 0) ? 18 : 9;
+
+    ctx.fillStyle =
+      i === 0 ? '#08090b' :
+      i === 1 ? '#17131b' :
+      '#151a20';
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+      0,
+      7,
+      i === 0 ? 17 : 15,
+      i === 0 ? 23 : 20,
+      0,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fill();
+
+    // Teacher's face.
+    ctx.fillStyle = i === 1 ? '#b7a58f' : '#d4c7b2';
+
+    ctx.beginPath();
+    ctx.arc(0, -17, i === 0 ? 11 : 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair.
+    ctx.fillStyle = '#101114';
+    ctx.fillRect(-10, -26, 20, 8);
+
+    // Eyes.
+    ctx.fillStyle = i === 2 ? '#e0b04a' : '#e34b42';
+    ctx.fillRect(-6, -18, 3, 3);
+    ctx.fillRect(4, -18, 3, 3);
+
+    // Warning symbol above the head teacher.
+    if (i === 0) {
+      ctx.fillStyle = '#b12b24';
+      ctx.font = 'bold 13px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('!', 0, -34);
+    }
+
+    ctx.restore();
+  });
+
+  // Draw the player.
+  ctx.save();
+  ctx.translate(player.x, player.y);
+
+  if (
+    player.inv > 0 &&
+    Math.floor(performance.now() / 100) % 2 === 0
+  ) {
+    ctx.globalAlpha = 0.35;
+  }
+
+  ctx.fillStyle = '#e0b04a';
+
+  ctx.beginPath();
+  ctx.arc(0, 0, player.r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#fff3b0';
+
+  ctx.beginPath();
+  ctx.arc(-4, -4, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+  ctx.restore();
+
+  // Dark vignette around the screen.
+  const grad = ctx.createRadialGradient(
+    W / 2,
+    H / 2,
+    Math.min(W, H) * 0.12,
+    W / 2,
+    H / 2,
+    Math.max(W, H) * 0.7
+  );
+
+  grad.addColorStop(0, '#0000');
+  grad.addColorStop(1, '#000b');
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Warning when the head teacher gets close.
+  const d = Math.hypot(
+    player.x - teacher.x,
+    player.y - teacher.y
+  );
+
+  if (started && !paused && d < 260) {
+    ctx.fillStyle =
+      `rgba(192,57,43,${0.08 + (260 - d) / 1300})`;
+
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = '#ff8b7d';
+    ctx.font = 'bold 13px system-ui';
+    ctx.textAlign = 'center';
+
+    ctx.fillText('SHE IS NEAR', W / 2, H - 25);
+  }
+}
+
+// Main game loop.
+function loop(t) {
+  const dt = Math.min((t - last) / 1000 || 0, 0.04);
+
+  last = t;
+
+  update(dt);
+  draw();
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+
+// Keyboard movement.
+addEventListener('keydown', e => {
+  const k = e.key.length === 1
+    ? e.key.toLowerCase()
+    : e.key;
+
+  if (
+    ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ']
+    .includes(e.key)
+  ) {
+    e.preventDefault();
+  }
+
+  keysDown[k] = true;
+});
+
+addEventListener('keyup', e => {
+  const k = e.key.length === 1
+    ? e.key.toLowerCase()
+    : e.key;
+
+  keysDown[k] = false;
+});
+
+// Touchscreen movement buttons.
+document.querySelectorAll('#dpad button').forEach(b => {
+  const dir = b.dataset.dir;
+
+  const down = e => {
+    e.preventDefault();
+    touchDirs[dir] = true;
+  };
+
+  const up = e => {
+    e.preventDefault();
+    touchDirs[dir] = false;
+  };
+
+  b.addEventListener('pointerdown', down);
+  b.addEventListener('pointerup', up);
+  b.addEventListener('pointercancel', up);
+  b.addEventListener('pointerleave', up);
+});
+
+// Drag movement.
+let pointerStart = null;
+
+canvas.addEventListener('pointerdown', e => {
+  if (!started || paused) return;
+
+  pointerStart = {
+    x: e.clientX,
+    y: e.clientY,
+    id: e.pointerId
+  };
+
+  try {
+    canvas.setPointerCapture(e.pointerId);
+  } catch {}
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (!pointerStart || pointerStart.id !== e.pointerId) return;
+
+  const dx = e.clientX - pointerStart.x;
+  const dy = e.clientY - pointerStart.y;
+  const len = Math.hypot(dx, dy) || 1;
+
+  drag = {
+    dx: dx / len,
+    dy: dy / len
+  };
+});
+
+function endDrag(e) {
+  if (pointerStart && (!e || pointerStart.id === e.pointerId)) {
+    pointerStart = null;
+    drag = null;
+  }
+}
+
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+
+// Ambient horror sound.
+function startAudio() {
+  try {
+    audioCtx = audioCtx ||
+      new (window.AudioContext || window.webkitAudioContext)();
+
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+
+    if (ambientOsc) return;
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.value = 48;
+    gain.gain.value = 0.018;
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+
+    ambientOsc = {osc, gain};
+  } catch (e) {
+    showToast('Sound is not supported by this browser.');
+  }
+}
+
+function stopAudio() {
+  if (ambientOsc) {
+    try {
+      ambientOsc.osc.stop();
+    } catch {}
+
+    ambientOsc = null;
+  }
+}
+
+// Sound toggle.
+document.getElementById('mute').addEventListener('click', () => {
+  muted = !muted;
+
+  document.getElementById('mute').textContent =
+    muted ? '🔇' : '🔊';
+
+  if (muted) {
+    stopAudio();
+  } else if (started) {
+    startAudio();
+  }
+});
+
+// Prepare the game.
+reset();
+
+})();
+</script>
+</body>
+</html>
